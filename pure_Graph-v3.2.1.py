@@ -105,6 +105,8 @@ def mol2graph(SMILES):
 
     return(mol_graph, mol_nodes, carbons, others)
 
+    print()
+
 
 def draw_graph(graph, nodes=None, atom_type1=None, atom_type2=None):
     color_map = []
