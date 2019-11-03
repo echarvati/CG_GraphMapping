@@ -1,79 +1,18 @@
-import numpy as np
-import numpy.linalg
-from rdkit import Chem
-import rdkit
-from rdkit.Chem import AllChem
 import networkx as nx
 import matplotlib.pyplot as plt
+import numpy as np
+import numpy.linalg
 
-class MyAtom:
-    'Collection of the graph nodes'
-    def __init__(self, atom, molecule ):
-        vertex = molecule.GetAtomWithIdx(atom)
-        connectivity = vertex.GetDegree()
-        pos = molecule.GetConformer().GetAtomPosition(atom)
-        coords = np.array([pos.x, pos.y, pos.z])
-        atomtype = molecule.GetAtomWithIdx(atom).GetSymbol()
-        # print(type)
-        mass = vertex.GetMass()
-        chirality = vertex.GetChiralTag()
-        charge = vertex.GetFormalCharge()
-
-        self.vertex = vertex
-        self.connectivity = connectivity
-        self.coords = coords
-        self.type = atomtype
-        self.weight = mass
-        self.chiral = chirality
-        self.charge = charge
-
-class Bond:
-    'Bonds between atoms or beads'
-    def __init__(self, bond_id, bond):
-        
-        atom1 = bond.GetBeginAtomIdx()
-        atom2 = bond.GetEndAtomIdx()
-        bd_type = bond.GetBondType()
-        if bd_type == Chem.rdchem.BondType.SINGLE:
-            bond_type = 1
-        elif bd_type == Chem.rdchem.BondType.DOUBLE:
-            bond_type = 2
-        elif bd_type == Chem.rdchem.BondType.TRIPLE:
-            bond_type = 3
-        elif bd_type == Chem.rdchem.BondType.AROMATIC:
-            bond_type = 1.5
-        elif bd_type == None:
-            bond_type = None
-
-        self.begin = atom1
-        self.end = atom2
-        self.id = bond_id
-        self.BondOrder = bond_type
-
-class CGGraph():
-    ''' a wrapper for Graph, atoms, bonds, beads and related function '''
-    def __init__(self, SMILES):
-        ''' originally mol2graph 
-            initialize all thing in CGGraph
-            :SMILES: smiles representation of a molecule
-        '''
-        self.mol_graph = nx.Graph()
-        self.others = []
-        
-        # initialize molecule
-        molecule = Chem.MolFromSmiles(SMILES)
-        AllChem.EmbedMolecule(molecule, useRandomCoords=True)
-        self.molecule = molecule
-        
-        # initialize atoms, other, bonds and graph
-        self.bonds_list = self._build_bonds_graph()
-        self.mol_nodes = self._build_atoms()
-        self.others = self._build_others()
-        self.beads = []
-
-        # initialize rings/branches/roots/backbone
-        rings, branches, roots, backbone = self._find_regions(self.mol_graph)
-        rigid_ring, rigid_branch, rigid_backbone = self._check_rigid(self.mol_graph, rings, branches, backbone)
+class MyGraph():
+    ''' a wrapper for a networkx graph, and related rings/branches/roots/backbone to perform a single iteration of contraction '''
+    def __init__(self, graph, others=[]):
+        ''' perform initial analysis 
+        :graph: input should be a networkx.graph object '''
+        self.graph = graph
+        self.others = others
+         # initialize rings/branches/roots/backbone
+        rings, branches, roots, backbone = self._find_regions(self.graph)
+        rigid_ring, rigid_branch, rigid_backbone = self._check_rigid(self.graph, rings, branches, backbone)
         
         self.rings = rings 
         self.branches = branches
@@ -118,30 +57,6 @@ class CGGraph():
 
         return vertices
 
-    def _build_atoms(self):
-        nodes = []
-        for atom in range(len(self.molecule.GetAtoms())):
-            nodes.append( MyAtom(atom, self.molecule) )
-        return nodes
-
-    def _build_bonds_graph(self):
-        bonds_list = []
-        for bond_id ,bond in enumerate(self.molecule.GetBonds()):
-            this_bond = Bond(bond_id, bond)
-            bonds_list.append(this_bond)
-            self.mol_graph.add_edge(this_bond.begin, this_bond.end, weight = this_bond.BondOrder)
-        return bonds_list
-
-    def _build_others(self):
-        others = []
-        for item in range(len(self.mol_nodes)):
-            # print(mol_nodes[item].type)
-            if self.mol_nodes[item].type == 'C':
-                continue
-            else:
-                others.append(item)
-        return others
-
     def _find_rings(self, graph, rings):
         temp = []
         backbone = []
@@ -170,7 +85,8 @@ class CGGraph():
         temp_branches = []
         roots = []
         start = list(graph.nodes())[0]
-        stop = len(graph) - 1
+        # stop = len(graph) - 1
+        stop = max(graph.nodes)
 
         backs = list(nx.shortest_simple_paths(graph, source=start, target=stop))
         for back in backs:
@@ -258,7 +174,7 @@ class CGGraph():
     def make_fragment(self):
         vertices = []
         if len(self.rings)==0 and len(self.branches)==0 and self.rigid_backbone == False:
-            vertices = self._linear_fragment(self.backbone, self.others, self.mol_graph)
+            vertices = self._linear_fragment(self.backbone, self.others, self.graph)
             print(vertices)
         elif len(self.rings)!=0:
             if self.backbone == self.others or len(self.backbone)==0:
@@ -266,7 +182,7 @@ class CGGraph():
                 print(vertices)
             elif self.rigid_ring == True:
                 vertices_ring = self.rings
-                vertices_backbone = self._branch_fragment(self.backbone, self.roots, self.mol_graph)
+                vertices_backbone = self._branch_fragment(self.backbone, self.roots, self.graph)
                 vertices = vertices_ring + vertices_backbone
                 print(vertices)
         elif len(self.branches)!=0:
@@ -277,9 +193,9 @@ class CGGraph():
         major_nd=[]
         minor_nd=[]
         for vertex in vertices:
-            sub_graph = nx.Graph(self.mol_graph.subgraph(vertex))
+            sub_graph = nx.Graph(self.graph.subgraph(vertex))
             sub_centrality = nx.pagerank_numpy(sub_graph, alpha=0.85, weight='w')
-            mjr_nd, mnr_nd = self._rank_nodes(sub_graph, sub_centrality, self.mol_graph)
+            mjr_nd, mnr_nd = self._rank_nodes(sub_graph, sub_centrality, self.graph)
             for m in mjr_nd:
                 major_nd.append(m)
             for n in mnr_nd:
@@ -396,7 +312,8 @@ class CGGraph():
 
         return major, minor
 
-    def contract(self, minor, major, graph):
+    def contract(self, minor, major):
+        graph = self.graph
         FragGraph = nx.Graph(graph)
         for nd in minor:
             if nd in FragGraph.nodes():
@@ -419,14 +336,8 @@ class CGGraph():
                 #     FragGraph.add_edge(ns-1, ts, weight = 1)
         return FragGraph, FragNodes
 
-    def iterate(self):
-        vertices, major, minor = self.make_fragment()
-        AAgraph = self.mol_graph
-        CGgraph, CGnodes = self.contract(minor, major, AAgraph)
-        self.draw_graph(AAgraph, self.mol_nodes, self.others )
-        self.draw_graph(CGgraph)
-
-    def draw_graph(self, graph, nodes=None, others=None):
+    def draw_graph(self, nodes=None, others=None):
+        graph = self.graph
         color_map = []
         atom_type2 = []
 

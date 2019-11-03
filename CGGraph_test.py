@@ -1,5 +1,5 @@
-from Graphs.CGGraph import CGGraph
+from Graphs.MolecularGraph import MolecularGraph
 
 SMILES = 'CCCCCCCCCCCCCCC'
-cggraph = CGGraph(SMILES)
+cggraph = MolecularGraph(SMILES)
 cggraph.iterate()
