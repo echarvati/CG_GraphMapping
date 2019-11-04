@@ -296,7 +296,6 @@ class MyGraph():
         for i, nodes in enumerate(cluster):
             nd1 = nodes
             nd2 = cluster[(i + 1) % len(cluster)]
-            # print(nd1, nd2)
             if round(centrality[nd1], 3) == round(centrality[nd2], 3):
                 touched.append(nd1)
                 touched.append(nd2)
@@ -307,33 +306,44 @@ class MyGraph():
                 major.append(nd2)
                 minor.append(nd1)
 
-        major = list(dict.fromkeys(major))
-        minor = list(dict.fromkeys(minor))
+            if nd1 not in major and nd1 not in minor and nd2 not in major and nd2 not in minor and nd1!=nd2:
+                major.append(nd1)
+                minor.append(nd2)
+
+            for m in major:
+                for j in major:
+                    if m!=j and m in cluster and j in cluster:
+                        major.remove(m)
+                        minor.append(m)
+
+        major = list((dict.fromkeys(major)))
+        minor = list((dict.fromkeys(minor)))
 
         return major, minor
 
     def contract(self, minor, major):
-        graph = self.graph
+        graph=self.graph
         FragGraph = nx.Graph(graph)
         for nd in minor:
             if nd in FragGraph.nodes():
                 FragGraph.remove_node(nd)
             else:
                 continue
-
+        all_nodes = list(graph.nodes())
         FragNodes = FragGraph.nodes()
-
-        for m, mj in enumerate(sorted(major)):
+        print(sorted(major))
+        for m, mj in enumerate(major):
             ts = mj
             ns = major[(m + 1) % len(sorted(major))]
+            print(ts, ns)
             if FragGraph.has_edge(ts, ns) == True:
                 continue
-            else:
-                FragGraph.add_edge(ts, ns, weight=1)
-                if FragGraph.has_edge(major[0], major[-1]) == True and len(major) > 2:
-                    FragGraph.remove_edge(major[0], major[-1])
-                # elif graph.has_edge(ns-1, ts):
-                #     FragGraph.add_edge(ns-1, ts, weight = 1)
+            elif graph.has_edge(all_nodes[0], ts-1) and all_nodes[0] in FragNodes:
+               FragGraph.add_edge(all_nodes[0], ts, weight=1)
+
+            FragGraph.add_edge(ts, ns, weight=1)
+            if FragGraph.has_edge(major[0], major[-1]) == True and len(major) > 2:
+                FragGraph.remove_edge(major[0], major[-1])
         return FragGraph, FragNodes
 
     def draw_graph(self, nodes=None, others=None):
