@@ -16,9 +16,10 @@ start_time = time.clock()
 
 
 
-# SMILES = 'C=CC=CC=CC=CC=CC=CC'
-SMILES = 'CCCCCCCCCCCCCCC'
-# SMILES = 'COCOCOCOCOCOC'
+# SMILES = 'C=CC=CC=CC=CC=CC=C'
+SMILES = 'CCCCCCCCCCCCCCCC'
+# SMILES = 'COCCOCCOCCOCCOCCO'
+# SMILES = 'COCOCOCOCOCOCO'
 # SMILES = 'c1cc(O)ccc1Oc1ccc(cc1)Oc1ccc(cc1)Oc1ccc(cc1)Oc1ccc(cc1)O'
 # SMILES = 'C[C@H](C)C[C@@H](C)C[C@H](C)C[C@@H](C)C[C@H](C)C'
 # SMILES = 'C[C@H](C#N)C[C@@H](C#N)C[C@H]C'
@@ -28,9 +29,9 @@ SMILES = 'CCCCCCCCCCCCCCC'
 # SMILES = 'C(F)C(F)C(F)C(F)C(F)C(F)C(F)'
 #  SMILES = 'CC(C)(CCC)CC(C)(CCC)CC(C)(CCC)CC(C)(CCC)CC(C)(CCC)C'
 # SMILES = 'C(F)(F)C(F)(F)C(F)(F)C(F)(F)C(F)(F)C(F)(F)C(F)(F)'
-#SMILES = 'c1ccc(cc1)c1ccc(cc1)c1ccc(cc1)c1ccc(cc1)c1ccc(cc1)c1ccc(cc1)'
-#SMILES = 'c1cc(O)ccc1Oc1ccc(cc1)Oc1ccc(cc1)Oc1ccc(cc1)Oc1ccc(cc1)O'
-# SMILES = 'c1ccccc1[C@H](C)C[C@@H](c1ccccc1)C[C@H](c1ccccc1)C[C@@H](c1ccccc1)C'
+# SMILES = 'c1ccc(cc1)c1ccc(cc1)c1ccc(cc1)c1ccc(cc1)c1ccc(cc1)c1ccc(cc1)'
+# SMILES = 'c1cc(O)ccc1Oc1ccc(cc1)Oc1ccc(cc1)Oc1ccc(cc1)Oc1ccc(cc1)O'
+# SMILES = 'c1ccccc1[C@H](C)C[C@@H](c1ccccc1)C[C@H](c1ccccc1)C[C@@H](c1ccccc1)'
 
 AAgraph, AAnodes, rings, branches, roots, backbone, rigid_ring, rigid_branch, rigid_backbone, other_atoms= mol2graph(SMILES)
 

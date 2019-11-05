@@ -98,19 +98,22 @@ class MolecularGraph():
     def _single_iteration(self, mygraph):
         ''' this function takes a graph in, analyze, seperate, and contract it
         :graph: big/full MyGraph
-        :return: small/contracted MyGraph '''
+        :return: small/contracted networkx graph '''
         # analyze the graph
         vertices, major, minor = mygraph.make_fragment()
         contracted_graph, contracted_nodes = mygraph.contract(minor, major)
         return contracted_graph
 
     def iterate(self):
-        mygraph = MyGraph(self.mol_graph)
-        mygraph.draw_graph()
-        contracted_mygraph = MyGraph( self._single_iteration(mygraph) )
-        contracted_mygraph.draw_graph()
-        contracted_2_mygraph = MyGraph( self._single_iteration(contracted_mygraph)  )
-        contracted_2_mygraph.draw_graph()
+        mygraph = MyGraph(self.mol_graph, self.others)
+        mygraph.draw_graph(self.mol_nodes)
+        graph2 = self._single_iteration(mygraph)
+
+        mygraph2 = MyGraph( graph2 )
+        mygraph2.draw_graph()
+        graph3 = self._single_iteration(mygraph2)
+        # contracted_2_mygraph = MyGraph( self._single_iteration(contracted_mygraph)  )
+        # contracted_2_mygraph.draw_graph()
 
 
     

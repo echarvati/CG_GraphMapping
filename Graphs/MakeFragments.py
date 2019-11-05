@@ -55,8 +55,24 @@ def heavy_fragment(fragnodes, othernodes, graph):
 
     return back_frag, edge_frag, vertices
 
+def rigid_fragment(graph, in_list):
+    vertices = []
+    print(in_list)
+    Lap = nx.normalized_laplacian_matrix(graph, nodelist=None)
+    for u, v in enumerate(in_list):
+        n1 = v
+        n2 = in_list[(u+1)%len(in_list)]
+        sim_rank = abs(Lap.A[n1][n2])
+        if sim_rank == 0 or sim_rank == 1:
+            continue
+        elif sim_rank > 0.5 and sorted([n1, n2]) not in vertices:
+            vertices.append([n1, n2])
+    print(vertices)
+    return vertices
+
+
+
 def branch_fragment(backbone, roots, graph):
-    print(backbone, roots)
     short_back = []
     for atom in backbone:
         if atom in roots:
@@ -64,7 +80,8 @@ def branch_fragment(backbone, roots, graph):
         else:
             short_back.append(atom)
     back_frag, edge_frag, vertices = heavy_fragment(short_back, roots, graph)
-    print(vertices)
+
+    return vertices
 
 def linear_fragment(backbone, others, graph):
     vertices = []
@@ -96,7 +113,6 @@ def linear_fragment(backbone, others, graph):
         print(others, backbone)
     return vertices
 
-
 def rank_nodes(vertex, centrality, graph):
     major = []
     minor = []
@@ -108,7 +124,6 @@ def rank_nodes(vertex, centrality, graph):
     for i, nodes in enumerate(cluster):
         nd1 = nodes
         nd2 = cluster[(i + 1) % len(cluster)]
-        # print(nd1, nd2)
         if round(centrality[nd1], 3) == round(centrality[nd2], 3):
             touched.append(nd1)
             touched.append(nd2)
@@ -119,6 +134,16 @@ def rank_nodes(vertex, centrality, graph):
             major.append(nd2)
             minor.append(nd1)
 
+        if nd1 not in major and nd1 not in minor and nd2 not in major and nd2 not in minor and nd1!=nd2:
+            major.append(nd1)
+            minor.append(nd2)
+
+        for m in major:
+            for j in major:
+                if m!=j and m in cluster and j in cluster:
+                    major.remove(m)
+                    minor.append(m)
+
     major = list((dict.fromkeys(major)))
     minor = list((dict.fromkeys(minor)))
 
@@ -127,8 +152,12 @@ def rank_nodes(vertex, centrality, graph):
 
 def make_fragment(mol_graph, mol_nodes, rings, branches, roots, backbone, rigid_ring, rigid_branch, rigid_backbone, others):
     vertices = []
+    nodes_list = list(mol_graph.nodes())
     if len(rings)==0 and len(branches)==0 and rigid_backbone == False:
         vertices = linear_fragment(backbone, others, mol_graph)
+        # print(vertices)
+    elif len(rings)==0 and len(branches)==0 and rigid_backbone == True:
+        vertices = rigid_fragment(mol_graph, backbone)
         print(vertices)
     elif len(rings)!=0:
         if backbone == others or len(backbone)==0:
@@ -143,7 +172,7 @@ def make_fragment(mol_graph, mol_nodes, rings, branches, roots, backbone, rigid_
         if rigid_branch == False:
             for branch in branches:
                 if len(branch)==1:
-                    vertices = simple_fragment(mol_nodes)
+                    vertices = simple_fragment(nodes_list)
     major_nd=[]
     minor_nd=[]
     for vertex in vertices:
@@ -164,23 +193,27 @@ def contract(minor, major, graph):
             FragGraph.remove_node(nd)
         else:
             continue
-
+    all_nodes = list(graph.nodes())
     FragNodes = FragGraph.nodes()
-
-    for m, mj in enumerate(sorted(major)):
+    # print(sorted(major))
+    for m, mj in enumerate(major):
         ts = mj
         ns = major[(m + 1) % len(sorted(major))]
+        print(ts, ns)
         if FragGraph.has_edge(ts, ns) == True:
             continue
-        else:
-            FragGraph.add_edge(ts, ns, weight=1)
-            if FragGraph.has_edge(major[0], major[-1]) == True and len(major) > 2:
-                FragGraph.remove_edge(major[0], major[-1])
-            # elif graph.has_edge(ns-1, ts):
-            #     FragGraph.add_edge(ns-1, ts, weight = 1)
+        elif graph.has_edge(all_nodes[0], ts-1) and all_nodes[0] in FragNodes:
+           FragGraph.add_edge(all_nodes[0], ts, weight=1)
 
+        FragGraph.add_edge(ts, ns, weight=1)
+        if FragGraph.has_edge(major[0], major[-1]) == True and len(major) > 2:
+            FragGraph.remove_edge(major[0], major[-1])
 
     return FragGraph, FragNodes
+
+
+
+
 
 
 

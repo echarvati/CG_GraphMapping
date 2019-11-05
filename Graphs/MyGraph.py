@@ -2,7 +2,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.linalg
-
 class MyGraph():
     ''' a wrapper for a networkx graph, and related rings/branches/roots/backbone to perform a single iteration of contraction '''
     def __init__(self, graph, others=[]):
@@ -10,6 +9,7 @@ class MyGraph():
         :graph: input should be a networkx.graph object '''
         self.graph = graph
         self.others = others
+        self.draw_graph()
          # initialize rings/branches/roots/backbone
         rings, branches, roots, backbone = self._find_regions(self.graph)
         rigid_ring, rigid_branch, rigid_backbone = self._check_rigid(self.graph, rings, branches, backbone)
@@ -86,7 +86,9 @@ class MyGraph():
         roots = []
         start = list(graph.nodes())[0]
         # stop = len(graph) - 1
-        stop = max(graph.nodes)
+        # stop = max(graph.nodes)
+        stop = 13
+
 
         backs = list(nx.shortest_simple_paths(graph, source=start, target=stop))
         for back in backs:
@@ -144,9 +146,8 @@ class MyGraph():
         return conj_func
 
     def _conj_region(self, conj):
-
         conj_func = sum(conj)
-        if conj_func>0:
+        if conj_func>=0:
             rigid=True
         else:
             rigid=False
@@ -163,8 +164,11 @@ class MyGraph():
             rigid_ring = self._conj_region(ring_conj_func)
         elif len(branches)!=0:
             for branch in branches:
-                branch_conj_func = self._find_rigid(graph, branch)
-            rigid_branch = self._conj_region(branch_conj_func)
+                if len(branch)==1:
+                    continue
+                else:
+                    branch_conj_func = self._find_rigid(graph, branch)
+                    rigid_branch = self._conj_region(branch_conj_func)
         else:
             backbone_conj_func = self._find_rigid(graph, backbone)
             rigid_backbone = self._conj_region(backbone_conj_func)
@@ -173,9 +177,12 @@ class MyGraph():
 
     def make_fragment(self):
         vertices = []
+        all_nodes = list(self.graph.nodes())
         if len(self.rings)==0 and len(self.branches)==0 and self.rigid_backbone == False:
             vertices = self._linear_fragment(self.backbone, self.others, self.graph)
             print(vertices)
+        elif len(self.rings) == 0 and len(self.branches) == 0 and self.rigid_backbone == True:
+            vertices = self._rigid_fragment(self.graph, self.backbone)
         elif len(self.rings)!=0:
             if self.backbone == self.others or len(self.backbone)==0:
                 vertices = self.rings
@@ -189,7 +196,16 @@ class MyGraph():
             if self.rigid_branch == False:
                 for branch in self.branches:
                     if len(branch)==1:
-                        vertices = self.simple_fragment(self.mol_nodes)
+                        vertices = self._simple_fragment(all_nodes)
+            else:
+                vertices_branch = []
+                for branch in self.branches:
+                    branch_vertex = self._rigid_fragment(self.graph, branch)
+                    for br in branch_vertex:
+                        vertices_branch.append(br)
+                vertices_backbone = self._branch_fragment(self.backbone, self.roots, self.graph)
+                vertices = vertices_branch + vertices_backbone
+
         major_nd=[]
         minor_nd=[]
         for vertex in vertices:
@@ -204,10 +220,27 @@ class MyGraph():
         return vertices, major_nd, minor_nd
 
     def _simple_fragment(self, nodes):
+        # print(nodes)
+        # print(type(nodes))
         vertices = []
         for c in range(0, len(nodes), 3):
             chn = nodes[c: c + 3]
             vertices.append(chn)
+        return vertices
+
+    def _rigid_fragment(self, graph, in_list):
+        vertices = []
+        print(in_list)
+        Lap = nx.normalized_laplacian_matrix(graph, nodelist=None)
+        for u, v in enumerate(in_list):
+            n1 = v
+            n2 = in_list[(u + 1) % len(in_list)]
+            sim_rank = abs(Lap.A[n1][n2])
+            if sim_rank == 0 or sim_rank == 1:
+                continue
+            elif sim_rank > 0.5 and sorted([n1, n2]) not in vertices:
+                vertices.append([n1, n2])
+        print(vertices)
         return vertices
 
     def _heavy_fragment(self, fragnodes, othernodes, graph):
@@ -321,32 +354,58 @@ class MyGraph():
 
         return major, minor
 
+
     def contract(self, minor, major):
-        graph=self.graph
-        FragGraph = nx.Graph(graph)
+        FragGraph = nx.Graph(self.graph)
         for nd in minor:
             if nd in FragGraph.nodes():
                 FragGraph.remove_node(nd)
             else:
                 continue
-        all_nodes = list(graph.nodes())
+        all_nodes = list(self.graph.nodes())
         FragNodes = FragGraph.nodes()
-        print(sorted(major))
+
+        contracted_Graph = self._make_Fragedges(major, all_nodes, FragNodes, FragGraph)
+
+        return contracted_Graph, FragNodes
+
+    def _make_Fragedges(self, major, all_nodes, FragNodes,FragGraph):
         for m, mj in enumerate(major):
             ts = mj
             ns = major[(m + 1) % len(sorted(major))]
-            print(ts, ns)
+
             if FragGraph.has_edge(ts, ns) == True:
                 continue
-            elif graph.has_edge(all_nodes[0], ts-1) and all_nodes[0] in FragNodes:
-               FragGraph.add_edge(all_nodes[0], ts, weight=1)
+            elif self.graph.has_edge(all_nodes[0], ts - 1) and all_nodes[0] in FragNodes:
+                FragGraph.add_edge(all_nodes[0], ts, weight=1)
+            elif self.branches != 0:
+                FragGraph = self._BranchEdge_cleanup(major, FragGraph)
 
             FragGraph.add_edge(ts, ns, weight=1)
             if FragGraph.has_edge(major[0], major[-1]) == True and len(major) > 2:
                 FragGraph.remove_edge(major[0], major[-1])
-        return FragGraph, FragNodes
 
-    def draw_graph(self, nodes=None, others=None):
+        return FragGraph
+
+    def _BranchEdge_cleanup(self, major,FragGraph):
+        for m1 in major:
+            for m2 in major:
+                if m1 != m2 and m1 not in self.backbone and m2 not in self.backbone:
+                    if FragGraph.has_edge(m1, m2) == True and self.graph.has_edge(m1, m2) == False:
+                        FragGraph.remove_edge(m1, m2)
+                elif m1 != m2 and m1 in self.backbone and m2 not in self.backbone:
+                    if self.graph.has_edge(m1, self.backbone[-1]) == True and self.graph.has_edge(m2, self.backbone[-1]) == True:
+                        FragGraph.add_edge(m1, m2, weight=1)
+                    elif m1 == sorted(major)[0] and m2 == sorted(major)[-1] and self.graph.has_edge(m1,
+                                                                                               m2) == False and FragGraph.has_edge(
+                            m1, m2) == True:
+                        FragGraph.remove_edge(m1, m2)
+
+        return FragGraph
+
+
+    def draw_graph(self, nodes=None):
+        others = self.others
         graph = self.graph
         color_map = []
         atom_type2 = []
@@ -355,7 +414,7 @@ class MyGraph():
         etriple = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] == 3]
         edouble = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] == 2]
         earom = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] == 1.5]
-        # var = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] == 0.75]
+
 
         pos = nx.spring_layout(graph)
         nx.draw_networkx_nodes(graph, pos, node_size=500)
@@ -368,14 +427,16 @@ class MyGraph():
                 # print(node, nodes[node].type)
 
                 if nodes[node].type == 'O':
-
                     nx.draw_networkx_nodes(graph, pos, node_size=500, nodelist=others, node_color='r')
+
                 elif nodes[node].type == 'Cl':
-
                     nx.draw_networkx_nodes(graph, pos, node_size=500, nodelist=others, node_color='y')
-                elif nodes[node].type == 'F':
 
+                elif nodes[node].type == 'F':
                     nx.draw_networkx_nodes(graph, pos, node_size=500, nodelist=others, node_color='g')
+
+                elif nodes[node].type == 'N':
+                    nx.draw_networkx_nodes(graph, pos, node_size=500, nodelist=others, node_color='b')
 
         nx.draw_networkx_edges(graph, pos, edgelist=etriple, width=12, alpha=0.5, edge_color='b', node_color=color_map)
         nx.draw_networkx_edges(graph, pos, edgelist=edouble, width=12, alpha=0.5, edge_color='g', node_color=color_map)

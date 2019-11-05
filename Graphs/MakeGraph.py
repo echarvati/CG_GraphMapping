@@ -184,7 +184,7 @@ def find_rigid(graph, region):
 def conj_region(conj):
 
     conj_func = sum(conj)
-    if conj_func>0:
+    if conj_func>=0:
         rigid=True
     else:
         rigid=False
@@ -225,7 +225,6 @@ def mol2graph(SMILES):
             continue
         else:
             others.append(item)
-
 
     for num,bond in enumerate(molecule.GetBonds()):
         bond_id = num
