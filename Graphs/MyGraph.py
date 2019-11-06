@@ -378,6 +378,12 @@ class MyGraph():
                 continue
             elif self.graph.has_edge(all_nodes[0], ts - 1) and all_nodes[0] in FragNodes:
                 FragGraph.add_edge(all_nodes[0], ts, weight=1)
+            elif len(self.backbone) == 0 and len(self.rings)!=0:
+                FragGraph.add_edge(ts, ns, weight=1)
+                if FragGraph.has_edge(major[0], major[-1]) == True and len(major) > 2:
+                    FragGraph.remove_edge(major[0], major[-1])
+
+
             elif self.branches != 0:
                 FragGraph = self._BranchEdge_cleanup(major, FragGraph)
 
@@ -402,6 +408,9 @@ class MyGraph():
                         FragGraph.remove_edge(m1, m2)
 
         return FragGraph
+
+    # def _RingBackEdge_cleanup(self,major, FragGraph):
+    #     for
 
 
     def draw_graph(self, nodes=None):

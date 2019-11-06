@@ -109,7 +109,6 @@ class MolecularGraph():
         return mygraph
 
     def iterate(self, n):
-
         some_graph=self._make()
         for _ in range(n):
             some_graph= MyGraph(self._single_iteration(some_graph))
