@@ -86,8 +86,8 @@ class MyGraph():
         roots = []
         start = list(graph.nodes())[0]
         # stop = len(graph) - 1
-        # stop = max(graph.nodes)
-        stop = 13
+        stop = max(graph.nodes)
+        # stop = 13
 
 
         backs = list(nx.shortest_simple_paths(graph, source=start, target=stop))
@@ -240,7 +240,7 @@ class MyGraph():
                 continue
             elif sim_rank > 0.5 and sorted([n1, n2]) not in vertices:
                 vertices.append([n1, n2])
-        print(vertices)
+        # print(vertices)
         return vertices
 
     def _heavy_fragment(self, fragnodes, othernodes, graph):
@@ -270,7 +270,7 @@ class MyGraph():
                 if v1!=v2 and v1.issubset(v2):
 
                     smth.append(list(v1))
-        print(smth)
+        # print(smth)
         for group in groups:
             if sorted(group) not in smth:
                 vertices.append(sorted(group))
@@ -278,7 +278,7 @@ class MyGraph():
         return back_frag, edge_frag, vertices
 
     def _branch_fragment(self, backbone, roots, graph):
-        print(backbone, roots)
+        # print(backbone, roots)
         short_back = []
         for atom in backbone:
             if atom in roots:
@@ -313,9 +313,9 @@ class MyGraph():
                 vertices = groups1 + groups2
         else:
             back_frag, edge_frag, vertices = self._heavy_fragment(others, backbone, graph)
-            print(vertices)
+            # print(vertices)
 
-            print(others, backbone)
+            # print(others, backbone)
         return vertices
 
     def _rank_nodes(self, vertex, centrality, graph):

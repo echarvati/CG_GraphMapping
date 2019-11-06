@@ -104,16 +104,16 @@ class MolecularGraph():
         contracted_graph, contracted_nodes = mygraph.contract(minor, major)
         return contracted_graph
 
-    def iterate(self):
+    def _make(self):
         mygraph = MyGraph(self.mol_graph, self.others)
-        mygraph.draw_graph(self.mol_nodes)
-        graph2 = self._single_iteration(mygraph)
+        return mygraph
 
-        mygraph2 = MyGraph( graph2 )
-        mygraph2.draw_graph()
-        graph3 = self._single_iteration(mygraph2)
-        # contracted_2_mygraph = MyGraph( self._single_iteration(contracted_mygraph)  )
-        # contracted_2_mygraph.draw_graph()
+    def iterate(self, n):
+
+        some_graph=self._make()
+        for _ in range(n):
+            some_graph= MyGraph(self._single_iteration(some_graph))
+
 
 
     
